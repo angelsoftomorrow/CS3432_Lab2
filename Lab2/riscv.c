@@ -66,79 +66,132 @@ bool check_strings(char str1[], char str2[]){
     }
     return true;
 }
-
-void load_word(char* token1, char* token2, char* token3){
-    int32_t token_reg2 = atoi(token2);
-    int32_t token_reg3 = atoi(token3);
-    int32_t load_sum = reg[token_reg2] + token_reg3;
-    int32_t loaded = read_address(load_sum,"mem.txt");
-    reg[atoi(token1)]= loaded;
-}
-
-void store_word(char* token1, char* token2, char* token3){
-    int32_t token_rs1 = atoi(token2);
-    int32_t token_rs2 = atoi(token3);
-    int32_t add_sum = reg[token_rs1] + token_rs2;
-    int32_t stored = read_address(add_sum,"mem.txt");
-    reg[atoi(token1)]= stored;
-}
-
-void add_reg(char* token1, char* token2, char* token3){
-    int32_t token_rd = atoi(token1);
-    int32_t token_rs1 = atoi(token2);
-    int32_t token_rs2 = atoi(token3);
-    reg[token_rd] = reg[token_rs1] + reg[token_rs2];
-}
-
-void addi_reg(char* token1, char* token2, char* token3){
-    int32_t token_rd = atoi(token1);
-    int32_t token_rs1 = atoi(token2);
-    int32_t token_imm = atoi(token3);
-    reg[token_rd] = reg[token_rs1] + reg[token_imm];
-}
-
-void or_reg(char* token1, char* token2, char* token3){
-    int32_t token_rd = atoi(token1);
-    int32_t token_rs1 = atoi(token2);
-    int32_t token_rs2 = atoi(token3);
-    reg[token_rd] = reg[token_rs1] || reg[token_rs2];
-}
-
-void and_reg(char* token1, char* token2, char* token3){
-    int32_t token_rd = atoi(token1);
-    int32_t token_rs1 = atoi(token2);
-    int32_t token_rs2 = atoi(token3);
-    reg[token_rd] = reg[token_rs1] + reg[token_rs2];
-}
 /**
  * Fill out this function and use it to read interpret user input to execute RV64 instructions.
  * You may expect that a single, properly formatted RISC-V instruction string will be passed
  * as a parameter to this function.
  */
 //this method is use so that we can properly interpert, it will use pointers
+int find_instr(char* instr) {
+    char *tokens = strtok(instr, " ");
+    if (check_strings(&tokens[0], "LW") == 1) {
+        return 2;
+    } else if (check_strings(&tokens[0], "SW") == 1) {
+        return 3;
+    } else if (check_strings(&tokens[0], "ADD") == 1) {
+        return 4;
+    } else if (check_strings(&tokens[0], "ADDI") == 1) {
+        return 5;
+    } else if (check_strings(&tokens[0], "AND") == 1) {
+        return 6;
+    } else if (check_strings(&tokens[0], "OR")) {
+        return 7;
+    }
+    return 0;
+}
+
+
 bool interpret(char* instr) {
-    char** tokens = (char **) strtok(instr, " ");
-        if (check_strings(tokens[0], "LW") == 1) {
-            load_word(tokens[1], tokens[2], tokens[3]);
-            print_regs();
-        } else if(check_strings(tokens[0], "SW") == 1){
-            store_word(tokens[1], tokens[2], tokens[3]);
-            print_regs();
-        } else if(check_strings(tokens[0], "ADD") == 1){
-            add_reg(tokens[1], tokens[2], tokens[3]);
-            print_regs();
-        } else if (check_strings(tokens[0], "ADDI") == 1){
-            addi_reg(tokens[1], tokens[2], tokens[3]);
-            print_regs();
-        } else if (check_strings(tokens[0], "AND") == 1) {
-            and_reg(tokens[1], tokens[2], tokens[3]);
-            print_regs();
-        } else if (check_strings(tokens[0], "OR")){
-            or_reg(tokens[1], tokens[2], tokens[3]);
-            print_regs();
-        } else {
-            printf("Try again");
-        }
+    int token_rs1;
+    int token_rs2;
+    int token_rd;
+    int token_imm;
+
+    char storing_delim[] = {"SW X LW ()"}; //holds the delimeters for the storing
+    char adding_delim[] = {"ADD X ADDI"};
+    char extra_delim[] = {"AND X OR"};
+
+    char *token = strtok(instr, adding_delim); //tokenize using the adding delimeters (ADD, ADDI)
+    char *token2 = strtok(instr, storing_delim);//tokenize using the storing delimeters (SW, LW)
+    char *extra_token = strtok(instr, extra_delim);//tokenize using the extra delimeters (AND, OR)
+
+    if (find_instr(instr) ==2){
+        printf("-------------------------- \n");
+        printf("You selected: Load Word \n");
+        printf("-------------------------- \n");
+        token_rd = atoi(token2);
+        token2 = strtok(NULL, storing_delim); //make jump to the next token
+        token_rs1 = atoi(token2);
+        token2 = strtok(NULL, storing_delim); //make jump to the next token
+        token_imm = atoi(token2);
+        int32_t read = read_address(token_rs1 + token_imm, "mem.txt"); //read the address at rs1 and imm
+        reg[token_rd] = read; //update register
+        printf("\n");
+        printf("You have loaded:%d \n"); //display result
+
+    } else if (find_instr(instr) ==3) {
+        printf("-------------------------- \n");
+        printf("You selected: Store Word \n");
+        printf("-------------------------- \n");
+        token_rd = atoi(token2);
+        token2 = strtok(NULL, storing_delim); //make jump to the next token
+        token_rs1 = atoi(token2);
+        token2 = strtok(NULL, storing_delim); //make jump to the next token
+        token_imm = atoi(token2);
+        int32_t address = token_rs1 + token_imm; //
+        reg[token_rd] = write_address(reg[token_rd],address,"mem.txt"); //write to address and update register
+        printf("\n");
+        printf("You have stored:%d \n");
+
+    } else if (find_instr(instr) == 4) {
+        printf("-------------------------- \n");
+        printf("You selected: Add \n");
+        printf("-------------------------- \n");
+        token_rd = atoi(token);
+        token = strtok(NULL, adding_delim); //make jump to the next tokenized token
+        token_rs1 = atoi(token);
+        token = strtok(NULL, adding_delim); //make jump to the next tokenized token
+        token_rs2 = atoi(token);
+        int sum = token_rs1 + token_rs2;
+        reg[token_rd] = sum; //write result to register
+        printf("\n");
+        printf("You have added:%d \n", sum);
+        return true;
+
+    } else if (find_instr(instr) == 5) {
+        printf("-------------------------- \n");
+        printf("You selected: Addi \n");
+        printf("-------------------------- \n");
+        token_rd = atoi(token);
+        token = strtok(NULL, adding_delim); //make jump to the next tokenized token
+        token_rs1 = atoi(token);
+        token = strtok(NULL, adding_delim); //make jump to the next tokenized token
+        token_imm = atoi(token);
+        int sum2 = token_rs1 + token_imm;
+        reg[token_rd] = sum2; //write result to register
+        printf("\n");
+        printf("You have added:%d \n", sum2);
+
+    } else if (find_instr(instr) == 6) {
+        printf("-------------------------- \n");
+        printf("You selected: And \n");
+        printf("-------------------------- \n");
+        token_rd = atoi(extra_token);
+        extra_token = strtok(NULL, extra_delim); //make jump to the next tokenized token
+        token_rs1 = atoi(extra_token);
+        extra_token = strtok(NULL, extra_delim); //make jump to the next tokenized token
+        token_rs2 = atoi(extra_token);
+        int and_result = token_rs1 & token_rs2;
+        reg[token_rd] = and_result; //write result to register
+        printf("\n");
+        printf("Your result is:%d \n", and_result);
+
+    } else if (find_instr(instr) == 7) {
+        printf("-------------------------- \n");
+        printf("You selected: Or \n");
+        printf("-------------------------- \n");
+        token_rd = atoi(extra_token);
+        extra_token = strtok(NULL, extra_delim); //make jump to the next tokenized token
+        token_rs1 = atoi(extra_token);
+        extra_token = strtok(NULL, extra_delim); //make jump to the next tokenized token
+        token_rs2 = atoi(extra_token);
+        int or_result = token_rs1 || token_rs2;
+        reg[token_rd] = or_result; //write to register
+        printf("\n");
+        printf("Your result is:%d \n", or_result);
+    } else {
+        printf("Invalid instruction. Try again. \n");
+    }
     return true;
 }
 /**
@@ -146,20 +199,36 @@ bool interpret(char* instr) {
  *
  */
 int main(){
-    // Do not write any code between init_regs
-    scanf("\n");
-    init_regs(); // DO NOT REMOVE THIS LINE
+    init_regs();
+    printf("RISCV Simulator \n");
+    printf("-------------------------- \n");
+    print_regs();
+    printf("\n");
+    printf("-------------------------- \n");
+    // Do not write any code between init_regs./
+
     char input[1000]; // User input can only be 100 chars long.
-    printf("Enter d to quit.\n");
+
+    printf("\n");
+    printf("Write your desired RISC-V instruction, or enter [x] to quit.\n");
+    printf("-------------------------- \n");
     //while loop so it can do the functions over and over until user press x, therefore it breaks
     while(1){
-        printf("Input: ");
+        printf("Enter input: ");
         fgets(input, sizeof(input), stdin);
-        if (*input == 'd'){break;}
+        if (*input == 'x'){
+            break;
+        }
         interpret(input);
+        printf("-------------------------- \n");
+        print_regs();
         printf("\n");
+        printf("-------------------------- \n");
     }
     print_regs();
+    printf("\n");
+    printf("-------------------------- \n");
+    printf("Thank you for using RISCV Simulator!");
 
     return 0;
 }
